@@ -8,6 +8,7 @@ from app.services.user_service import get_or_create_user
 from app.services.wishlist_service import get_or_create_wishlist, update_wishlist
 from app.utils.keyboards import wishlist_keyboard, back_to_main_keyboard
 from app.utils.formatters import format_wishlist
+from app.utils.telegram_formatter import TelegramFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,8 @@ async def my_wishlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = format_wishlist(wishlist.content)
         reply_markup = wishlist_keyboard()
 
-        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+        # Используем HTML парсинг для надежности
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='HTML')
         logger.info(f"Wishlist displayed for user {user.id}")
 
     except Exception as e:
@@ -40,16 +42,29 @@ async def edit_wishlist_start(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         logger.info(f"User {update.effective_user.id} started editing wishlist")
 
+        db: Session = next(get_db())
+        user = get_or_create_user(db, query.from_user.id, query.from_user.full_name, query.from_user.username)
+
+        wishlist = get_or_create_wishlist(db, user.id)
+        current_content = wishlist.content or ""
+
+        # Безопасно отображаем текущий контент
+        safe_current_content = TelegramFormatter.safe_text(current_content, 'HTML')
+
         # Устанавливаем состояние редактирования вишлиста
         context.user_data['editing_wishlist'] = True
         logger.info(f"Set editing_wishlist state for user {update.effective_user.id}")
 
-        text = """✏️ *Редактирование вишлиста*
+        text = f"""✏️ <b>Редактирование вишлиста</b>
+
+Текущий вишлист:
+{safe_current_content}
 
 Отправьте новый текст вишлиста (поддерживаются ссылки):"""
         reply_markup = back_to_main_keyboard()
 
-        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+        # Используем HTML парсинг
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='HTML')
         logger.info(f"Edit wishlist interface shown for user {update.effective_user.id}")
 
     except Exception as e:
@@ -75,12 +90,13 @@ async def edit_wishlist_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data.pop('editing_wishlist', None)
         logger.info(f"Cleared editing_wishlist state for user {user.id}")
 
-        text = f"""✅ *Вишлист обновлен!*
+        text = f"""✅ <b>Вишлист обновлен!</b>
 
 Ваш вишлист сохранен. Теперь ваш Тайный Санта сможет увидеть ваши пожелания."""
         reply_markup = back_to_main_keyboard()
 
-        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+        # Используем HTML парсинг
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='HTML')
         logger.info(f"Success message sent to user {user.id}")
 
     except Exception as e:
@@ -92,5 +108,3 @@ def setup_handlers(application):
     # Обработчики callback queries
     application.add_handler(CallbackQueryHandler(my_wishlist, pattern="^my_wishlist$"))
     application.add_handler(CallbackQueryHandler(edit_wishlist_start, pattern="^edit_wishlist$"))
-
-    # НЕ добавляем MessageHandler здесь - он будет в главном обработчике

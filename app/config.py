@@ -13,7 +13,8 @@ if not BOT_TOKEN:
     print("❌ BOT_TOKEN not found. Please check your .env file")
     raise ValueError("BOT_TOKEN environment variable is required")
 
-DATABASE_URL = "sqlite:///./secret_santa.db"
+# Измененный путь к базе данных
+DATABASE_URL = "sqlite:///./data/secret_santa.db"
 DATA_RETENTION_DAYS = 2
 
 # Настройка логирования

@@ -3,3 +3,11 @@ logs
 secret_santa.db
 .venv
 .idea
+
+# Исходные данные
+data/
+!data/.gitkeep
+
+# Исключения (не отслеживать в Git)
+*.db
+*.log

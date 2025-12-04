@@ -20,10 +20,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.effective_user.username
         )
 
-        text = "🎄 *Добро пожаловать в Тайного Санту!* 🎅\n\nВыберите действие:"
+        text = "🎄 <b>Добро пожаловать в Тайного Санту!</b> 🎅\n\nВыберите действие:"
         reply_markup = main_menu_keyboard()
 
-        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+        # Используем HTML парсинг
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='HTML')
         logger.info(f"User {user.id} started the bot")
 
     except Exception as e:
@@ -33,31 +34,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = """
-🎅 *Помощь по командам:*
+🎅 <b>Помощь по командам:</b>
 
 /start - Главное меню
 /help - Эта справка
 /cancel - Отмена текущей операции
 
-*Основные функции:*
-• 🎯 *Мои комнаты* - просмотр комнат, в которых вы участвуете
-• ➕ *Создать комнату* - создать новую игру Тайного Санты
-• 🎁 *Мой вишлист* - управление вашим списком пожеланий
-• 🎄 *Присоединиться к комнате* - вступить в игру по ID комнаты
+<b>Основные функции:</b>
+• 🎯 <b>Мои комнаты</b> - просмотр комнат, в которых вы участвуете
+• ➕ <b>Создать комнату</b> - создать новую игру Тайного Санты
+• 🎁 <b>Мой вишлист</b> - управление вашим списком пожеланий
+• 🎄 <b>Присоединиться к комнате</b> - вступить в игру по ID комнаты
 
-*Как играть:*
+<b>Как играть:</b>
 1. Создайте комнату или присоединитесь к существующей
 2. Заполните свой вишлист
 3. Дождитесь начала игры администратором
 4. Получите имя своего получателя и его вишлист!
 
-🎄 *Удачной игры!*
+🎄 <b>Удачной игры!</b>
     """
     if update.callback_query:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(help_text, parse_mode='Markdown')
+        await update.callback_query.edit_message_text(help_text, parse_mode='HTML')
     else:
-        await update.message.reply_text(help_text, parse_mode='Markdown')
+        await update.message.reply_text(help_text, parse_mode='HTML')
 
 
 async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):

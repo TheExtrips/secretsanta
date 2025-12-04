@@ -20,6 +20,7 @@ from app.utils.keyboards import (
     participants_keyboard, back_to_main_keyboard, main_menu_keyboard
 )
 from app.utils.formatters import format_room_info, format_participants_list
+from app.utils.telegram_formatter import TelegramFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -95,13 +96,18 @@ async def edit_description_save(update: Update, context: ContextTypes.DEFAULT_TY
         context.user_data.pop('editing_room_id', None)
         context.user_data.pop('editing_description', None)
 
-        text = f"""✅ *Описание обновлено!*
+        # Безопасно обрабатываем данные
+        safe_room_name = TelegramFormatter.safe_text(room.name, 'HTML')
+        safe_new_description = TelegramFormatter.safe_text(new_description, 'HTML')
 
-Новое описание комнаты '{room.name}':
-{new_description}"""
+        text = f"""✅ <b>Описание обновлено!</b>
+
+Новое описание комнаты '{safe_room_name}':
+{safe_new_description}"""
         reply_markup = back_to_main_keyboard()
 
-        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+        # Используем HTML парсинг
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='HTML')
 
     except Exception as e:
         logger.error(f"Error in edit_description_save: {e}")
@@ -146,17 +152,17 @@ async def room_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         participants = get_room_participants(db, room_id)
         is_admin_user = is_user_admin(db, user.id, room_id)
-        game_started = room.status.value == "closed"  # Игра начата если комната закрыта
+        game_started = room.status.value == "closed"
 
         text = format_room_info(room, participants, is_admin_user, game_started)
         reply_markup = room_management_keyboard(room_id, is_admin_user, game_started)
 
-        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+        # Используем HTML парсинг
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='HTML')
 
     except Exception as e:
         logger.error(f"Error in room_detail: {e}")
         await query.edit_message_text("❌ Произошла ошибка при загрузке комнаты.")
-
 
 async def create_room_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -173,7 +179,6 @@ async def create_room_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def create_room_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Проверяем, ожидаем ли мы название комнаты
     if not context.user_data.get('awaiting_room_name'):
         return
 
@@ -189,15 +194,19 @@ async def create_room_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Очищаем состояние
         context.user_data.pop('awaiting_room_name', None)
 
-        text = f"""🎄 *Комната создана!*
+        # Безопасно обрабатываем название комнаты
+        safe_room_name = TelegramFormatter.safe_text(room.name, 'HTML')
 
-*Название:* {room.name}
-*ID комнаты:* `{room.id}`
+        text = f"""🎄 <b>Комната создана!</b>
+
+<b>Название:</b> {safe_room_name}
+<b>ID комнаты:</b> <code>{room.id}</code>
 
 Поделитесь ID комнаты с друзьями, чтобы они могли присоединиться!"""
         reply_markup = back_to_main_keyboard()
 
-        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+        # Используем HTML парсинг
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='HTML')
 
     except Exception as e:
         logger.error(f"Error in create_room_name: {e}")
@@ -288,16 +297,19 @@ async def show_participants(update: Update, context: ContextTypes.DEFAULT_TYPE):
         participants = get_room_participants(db, room_id)
         room = get_room_by_id(db, room_id)
 
-        text = f"👥 *Участники комнаты '{room.name}'*\n\n"
+        # Безопасно обрабатываем название комнаты
+        safe_room_name = TelegramFormatter.safe_text(room.name, 'HTML')
+
+        text = f"👥 <b>Участники комнаты '{safe_room_name}'</b>\n\n"
         text += format_participants_list(participants)
         reply_markup = participants_keyboard(room_id)
 
-        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+        # Используем HTML парсинг
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='HTML')
 
     except Exception as e:
         logger.error(f"Error in show_participants: {e}")
         await query.edit_message_text("❌ Произошла ошибка при загрузке участников.")
-
 
 async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -337,14 +349,18 @@ async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 receiver_wishlist = "🎁 Вишлист пока не заполнен"
 
-            message_text = f"""🎅 *Тайный Санта начался!*
+            # Безопасно обрабатываем данные
+            safe_receiver_full_name = TelegramFormatter.safe_text(assignment.receiver.full_name, 'HTML')
+            safe_receiver_wishlist = TelegramFormatter.safe_text(receiver_wishlist, 'HTML')
 
-Вы дарите подарок: *{assignment.receiver.full_name}*
+            message_text = f"""🎅 <b>Тайный Санта начался!</b>
 
-🎁 *Вишлист получателя:*
-{receiver_wishlist}
+Вы дарите подарок: <b>{safe_receiver_full_name}</b>
 
-*Совет:* Вы всегда можете посмотреть эту информацию в разделе "Мои комнаты" → выберите комнату → "Кому я дарю подарок"
+🎁 <b>Вишлист получателя:</b>
+{safe_receiver_wishlist}
+
+<b>Совет:</b> Вы всегда можете посмотреть эту информацию в разделе "Мои комнаты" → выберите комнату → "Кому я дарю подарок"
 
 Удачи в выборе подарка! 🎄"""
 
@@ -352,29 +368,29 @@ async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     chat_id=assignment.santa.telegram_id,
                     text=message_text,
-                    parse_mode='Markdown'
+                    parse_mode='HTML'
                 )
                 successful_sends += 1
             except Exception as e:
                 logger.error(f"Error sending message to user {assignment.santa_id}: {e}")
 
         # Обновляем сообщение администратора
-        text = f"""✅ *Игра начата!*
+        text = f"""✅ <b>Игра начата!</b>
 
 Участники получили свои задания. 
 Успешно отправлено: {successful_sends}/{len(assignments)} уведомлений.
 
 Теперь участники могут в любой момент посмотреть информацию о своих получателях через меню комнаты.
 
-🎄 *Удачной игры!*"""
+🎄 <b>Удачной игры!</b>"""
         reply_markup = back_to_main_keyboard()
 
-        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+        # Используем HTML парсинг
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='HTML')
 
     except Exception as e:
         logger.error(f"Error in start_game: {e}")
         await query.edit_message_text("❌ Произошла ошибка при начале игры.")
-
 
 async def view_receiver(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показывает пользователю, кому он дарит подарок и его вишлист"""
@@ -408,22 +424,27 @@ async def view_receiver(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         wishlist_content = receiver_wishlist.content if receiver_wishlist and receiver_wishlist.content else "🎁 Вишлист пока не заполнен"
 
+        # Безопасно обрабатываем данные
+        safe_receiver_full_name = TelegramFormatter.safe_text(receiver.full_name, 'HTML')
+        safe_receiver_username = TelegramFormatter.safe_text(receiver.username, 'HTML') if receiver.username else None
+        safe_wishlist_content = TelegramFormatter.safe_text(wishlist_content, 'HTML')
+
         # Формируем сообщение
-        text = f"""🎅 *Ваш получатель подарка:*
+        text = f"""🎅 <b>Ваш получатель подарка:</b>
 
-*Имя:* {receiver.full_name}
-*Username:* {'@' + receiver.username if receiver.username else 'Не указан'}
+<b>Имя:</b> {safe_receiver_full_name}
+<b>Username:</b> {'@' + safe_receiver_username if safe_receiver_username else 'Не указан'}
 
-🎁 *Вишлист получателя:*
-{wishlist_content}
+🎁 <b>Вишлист получателя:</b>
+{safe_wishlist_content}
 
 Удачи в выборе подарка! 🎄"""
 
-        # Отправляем сообщение
+        # Отправляем сообщение с HTML парсингом
         await context.bot.send_message(
             chat_id=user.telegram_id,
             text=text,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
 
         # Обновляем исходное сообщение
@@ -435,7 +456,6 @@ async def view_receiver(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Error in view_receiver: {e}")
         await query.edit_message_text("❌ Произошла ошибка при получении информации о получателе.")
-
 
 async def delete_room_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Начало процесса удаления комнаты с подтверждением"""
