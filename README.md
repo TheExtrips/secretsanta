@@ -23,3 +23,19 @@ pip install -r requirements.txt
 ```bash
 python bot.py
 ```
+
+# Обновления для РФ
+В связи с блокировками Telegram, для запуска бота нужно реализовать прокси-подключение из файла bot.py. Как это сделано у меня в функции main:
+
+```python
+PROXY_URL = "http://127.0.0.1:10809" # рабочий порт proxy
+
+        # Создание приложения с прокси
+        application = (
+            Application.builder()
+            .token(BOT_TOKEN)
+            .proxy(PROXY_URL)  # Прокси для отправки сообщений
+            .get_updates_proxy(PROXY_URL)  # Прокси для получения обновлений (polling)
+            .build()
+        )
+```
